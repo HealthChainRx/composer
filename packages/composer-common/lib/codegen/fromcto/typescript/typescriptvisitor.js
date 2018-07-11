@@ -101,17 +101,22 @@ class TypescriptVisitor {
     visitModelFile(modelFile, parameters) {
         parameters.fileWriter.openFile(modelFile.getNamespace() + '.ts');
 
+        const dot = '.';
+        const properties = new Map();
+        properties.set('org.hyperledger.composer.system', new Set());
+
         // if this is not the system model file we have to import the system types
         // so that they can be extended
         if( !modelFile.isSystemModelFile() ) {
             const systemTypes = modelFile.getModelManager().getSystemTypes();
-            systemTypes.forEach(systemType =>
-                parameters.fileWriter.writeLine(0, `import {${systemType.getName()}} from './org.hyperledger.composer.system';`));
+            systemTypes.forEach(systemType => {
+                properties.get('org.hyperledger.composer.system').add(systemType.name);
+                properties.get('org.hyperledger.composer.system').add(systemType.name + 'Interface');
+                // parameters.fileWriter.writeLine(0, `import {${systemType.getName()}} from './org.hyperledger.composer.system';`);
+            });
         }
 
         // Import property types that are imported from other cto files.
-        const dot = '.';
-        const properties = new Map();
         modelFile.getAllDeclarations()
         .filter(v => !v.isEnum())
         .forEach(classDeclaration => classDeclaration.getProperties().forEach(property => {
@@ -144,6 +149,7 @@ class TypescriptVisitor {
         parameters.fileWriter.writeLine(0, '// export namespace ' + modelFile.getNamespace() + '{');
 
         modelFile.getAllDeclarations().forEach((decl) => {
+            // TODO: Update parameter
             decl.accept(this, parameters);
         });
 
@@ -180,28 +186,138 @@ class TypescriptVisitor {
      * @private
      */
     visitClassDeclaration(classDeclaration, parameters) {
-
-
-        let isAbstract = '';
-        if( classDeclaration.isAbstract() ) {
-            isAbstract = 'export abstract ';
+        if (parameters.properties === undefined) {
+            parameters.properties = {};
         }
-        else {
-            isAbstract = 'export ';
+        let allClassProperties = [];
+        if (classDeclaration.getSuperType()) {
+            allClassProperties = allClassProperties.concat(parameters.properties[classDeclaration.getSuperType()]);
         }
+        allClassProperties = allClassProperties.concat(classDeclaration.getOwnProperties());
+        parameters.properties[classDeclaration.getFullyQualifiedName()] = allClassProperties;
 
-        let superType = '';
-        if(classDeclaration.getSuperType()) {
-            superType = ' extends ' + ModelUtil.getShortName(classDeclaration.getSuperType());
-        }
+        const className = classDeclaration.getName();
+        const interfaceName = `${className}Interface`;
 
-        parameters.fileWriter.writeLine(1, isAbstract + 'class ' + classDeclaration.getName() + superType + ' {' );
+        // Write Interface
+        let superType = classDeclaration.getSuperType() ? ` extends ${ModelUtil.getShortName(classDeclaration.getSuperType())}Interface` : '';
+
+        parameters.fileWriter.writeLine(1, `export interface ${interfaceName} ${superType} {`);
+
+        // if (classDeclaration.decorators && classDeclaration.decorators.length > 0) {
+        //     parameters.fileWriter.writeLine(2, 'decorators: object;');
+        // }
 
         classDeclaration.getOwnProperties().forEach((property) => {
-            property.accept(this,parameters);
+            property.accept(this, parameters);
         });
 
         parameters.fileWriter.writeLine(1, '}' );
+        parameters.fileWriter.writeLine(1, '');
+
+        // Write Class
+        let isAbstract = classDeclaration.isAbstract() ? 'export abstract ' : 'export ';
+        superType = classDeclaration.getSuperType() ? ' extends ' + ModelUtil.getShortName(classDeclaration.getSuperType()) : '';
+
+        parameters.fileWriter.writeLine(1, `${isAbstract} class ${className} ${superType} implements ${interfaceName} {`);
+
+        if (classDeclaration.decorators && classDeclaration.decorators.length > 0) {
+            parameters.fileWriter.writeLine(2, 'static decorators() {');
+            parameters.fileWriter.writeLine(3, 'return {');
+
+            classDeclaration.decorators.forEach((decorator, idx, array) => {
+                if (idx !== array.length - 1) {
+                    parameters.fileWriter.writeLine(4, `${decorator.name}: ${JSON.stringify(decorator.arguments)},`);
+                } else {
+                    parameters.fileWriter.writeLine(4, `${decorator.name}: ${JSON.stringify(decorator.arguments)}`);
+                }
+            });
+
+            parameters.fileWriter.writeLine(3, '};');
+            parameters.fileWriter.writeLine(2, '};');
+        }
+
+        classDeclaration.getOwnProperties().forEach((property) => {
+            property.accept(this, parameters);
+        });
+
+        parameters.fileWriter.writeIndented(2, 'constructor(' );
+
+
+        const classHasOwnProperties = classDeclaration.getOwnProperties().length > 0;
+
+        if (classDeclaration.getSuperType()) {
+            parameters.properties[classDeclaration.getSuperType()].forEach((property, idx, array) => {
+                let writeParameters = Object.assign({write: true}, parameters);
+                property.accept(this, writeParameters);
+                if (classHasOwnProperties) {
+                    parameters.fileWriter.write(', ');
+                } else if (idx !== array.length - 1) {
+                    parameters.fileWriter.write(', ');
+                }
+            });
+        }
+
+        classDeclaration.getOwnProperties().forEach((property, idx, array) => {
+            let writeParameters = Object.assign({write: true}, parameters);
+            property.accept(this, writeParameters);
+            if (idx !== array.length - 1){
+                parameters.fileWriter.write(', ');
+            }
+        });
+
+        parameters.fileWriter.writeLine(0,') {');
+
+        // Only call super for derived classes
+        if (classDeclaration.getSuperType()) {
+            parameters.fileWriter.writeIndented(3, 'super(');
+
+            parameters.properties[classDeclaration.getSuperType()].forEach((property, idx, array) => {
+                let writeNameParameters = Object.assign({writeName: true}, parameters);
+                property.accept(this, writeNameParameters);
+                if (idx !== array.length - 1) {
+                    parameters.fileWriter.write(', ');
+                }
+            });
+
+            parameters.fileWriter.writeLine(0, ');');
+        }
+
+        classDeclaration.getOwnProperties().forEach((property) => {
+            parameters.fileWriter.writeLine(3, `this.${property.name} = ${property.name};` );
+
+            // parameters.fileWriter.writeIndented(2, `this.${property.name} = ${property.name};` );
+            // let writeParameters = Object.assign(parameters, {write: true});
+            // property.accept(this, writeParameters);
+            // parameters.fileWriter.write(';');
+        });
+
+        const hasVersion = allClassProperties.find((property) => property.name === 'version') !== undefined;
+        const hasId = allClassProperties.find((property) => property.name === 'id') !== undefined;
+
+        parameters.fileWriter.writeLine(2, '}' );
+
+        parameters.fileWriter.writeLine(2, 'getResourceType() : string {');
+        parameters.fileWriter.writeLine(3, `return '${classDeclaration.getFullyQualifiedName()}';`);
+        parameters.fileWriter.writeLine(2, '}');
+
+        if (!classDeclaration.isAbstract()) {
+            parameters.fileWriter.writeLine(2, 'serializeToJson() {');
+            parameters.fileWriter.writeLine(3, 'let json : any = Object.assign( { resourceType: this.getResourceType() }, this);');
+            if (hasVersion) {
+                parameters.fileWriter.writeLine(3, 'delete json.version;');
+            }
+            if (hasId) {
+                parameters.fileWriter.writeLine(3, 'delete json.id;');
+            }
+            parameters.fileWriter.writeLine(3, 'Object.keys(json).forEach((key) => { if (json[key] === undefined) delete json[key]; });' );
+            parameters.fileWriter.writeLine(3, 'return json;' );
+            parameters.fileWriter.writeLine(2, '}');
+        }
+
+
+        parameters.fileWriter.writeLine(1, '}' );
+
         return null;
     }
 
@@ -213,13 +329,19 @@ class TypescriptVisitor {
      * @private
      */
     visitField(field, parameters) {
-        let array = '';
+        let array = field.isArray() ? '[]' : '';
+        const name = field.getName();
+        const type = this.toTsType(field.getType());
+        const orUndefined = field.optional ? ' | undefined' : '';
 
-        if(field.isArray()) {
-            array = '[]';
+        if (parameters.writeName) {
+            parameters.fileWriter.write(name);
+        } else if (parameters.write) {
+            parameters.fileWriter.write(`${name}: ${type}${array}${orUndefined}`);
+        } else {
+            parameters.fileWriter.writeLine(2, `${name}: ${type}${array}${orUndefined};`);
         }
 
-        parameters.fileWriter.writeLine(2, field.getName() + ': ' + this.toTsType(field.getType()) + array + ';' );
         return null;
     }
 
@@ -231,7 +353,7 @@ class TypescriptVisitor {
      * @private
      */
     visitEnumValueDeclaration(enumValueDeclaration, parameters) {
-        parameters.fileWriter.writeLine(2, enumValueDeclaration.getName() + ',' );
+        parameters.fileWriter.writeLine(2, `${enumValueDeclaration.getName()} = '${enumValueDeclaration.getName()}',`);
         return null;
     }
 
@@ -243,14 +365,18 @@ class TypescriptVisitor {
      * @private
      */
     visitRelationship(relationship, parameters) {
-        let array = '';
-
-        if(relationship.isArray()) {
-            array = '[]';
-        }
+        let array = relationship.isArray() ? '[]' : '';
+        const name = relationship.getName();
+        const orUndefined = relationship.optional ? ' | undefined' : '';
 
         // we export all relationships by capitalizing them
-        parameters.fileWriter.writeLine(2, relationship.getName() + ': ' + this.toTsType(relationship.getType()) + array + ';' );
+        if (parameters.writeName) {
+            parameters.fileWriter.write(name);
+        } else if (parameters.write) {
+            parameters.fileWriter.write(`${name}: string${array}${orUndefined}`);
+        } else {
+            parameters.fileWriter.writeLine(2, `${name}: string${array}${orUndefined};`);
+        }
         return null;
     }
 
