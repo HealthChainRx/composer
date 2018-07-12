@@ -85,69 +85,6 @@ class TypescriptVisitor {
      * @private
      */
     visitModelManager(modelManager, parameters) {
-        // let decls = {};
-        // if (parameters.properties === undefined) {
-        //     parameters.properties = {};
-        // }
-
-        // modelManager.getModelFiles().forEach((modelFile) => {
-        //     modelFile.getAllDeclarations().filter(v => !v.isEnum().forEach((decl) => {
-        //         decl[decl.getFullyQualifiedName()] = decl;
-        //     }));
-        // });
-
-        // // let done = false;
-
-        // // while (!done) {
-        //     // done = true;
-
-        // while (decls.length > 0) {
-        //     Object.keys(decls).forEach((name) => {
-        //         let decl = decls[name];
-
-        //         // const name = decl.getFullyQualifiedName();
-        //         if (!parameters.properties.hasOwnProperty(name)) {
-        //             // done = false;
-
-        //             let allClassProperties = [];
-
-        //             if (classDeclaration.getSuperType()) {
-
-        //             }
-
-        //             allClassProperties = allClassProperties.concat(decl.getOwnProperties());
-
-        //             parameters.properties[name] = allClassProperties;
-        //         }
-        //     });
-        // }
-
-
-
-
-
-//         let allClassProperties = [];
-//         if (classDeclaration.getSuperType()) {
-//             let superProperties = parameters.properties[classDeclaration.getSuperType()];
-// console.log(classDeclaration.getName())
-// console.log(superProperties === undefined);
-//             allClassProperties = allClassProperties.concat(superProperties);
-//         }
-//         allClassProperties = allClassProperties.concat(classDeclaration.getOwnProperties());
-//         parameters.properties[classDeclaration.getFullyQualifiedName()] = allClassProperties;
-
-
-
-        // modelManager.getModelFiles().forEach((modelFile) => {
-        //     modelFile.getAllDeclarations()
-        //         .filter(v => !v.isEnum())
-        //         .forEach((decl) => {
-        //             if (decl instanceof ClassDeclaration) {
-        //                 parameters.properties[decl.getFullyQualifiedName()] = decl.getProperties();
-        //             }
-        //         });
-        // });
-
         modelManager.getModelFiles().forEach((modelFile) => {
             modelFile.accept(this,parameters);
         });
@@ -249,19 +186,6 @@ class TypescriptVisitor {
      * @private
      */
     visitClassDeclaration(classDeclaration, parameters) {
-//         if (parameters.properties === undefined) {
-//             parameters.properties = {};
-//         }
-//         let allClassProperties = [];
-//         if (classDeclaration.getSuperType()) {
-//             let superProperties = parameters.properties[classDeclaration.getSuperType()];
-// console.log(classDeclaration.getName())
-// console.log(superProperties === undefined);
-//             allClassProperties = allClassProperties.concat(superProperties);
-//         }
-//         allClassProperties = allClassProperties.concat(classDeclaration.getOwnProperties());
-//         parameters.properties[classDeclaration.getFullyQualifiedName()] = allClassProperties;
-
         let allClassProperties = classDeclaration.getProperties();
 
         const className = classDeclaration.getName();
@@ -310,21 +234,10 @@ class TypescriptVisitor {
             property.accept(this, parameters);
         });
 
-        // parameters.fileWriter.writeIndented(2, 'constructor(' );
-
-        // parameters.fileWriter.write('' );
-
-
-        // parameters.fileWriter.writeLine(2, `constructor(input : ${interfaceName} | null = null) {`);
         parameters.fileWriter.writeLine(2, `constructor(input : ${interfaceName}, setOptionalDefaults : boolean = false) {`);
         if (classDeclaration.getSuperType()) {
             parameters.fileWriter.writeLine(3, 'super(input, setOptionalDefaults);');
         }
-        // parameters.fileWriter.writeLine(3, 'if (input !== undefined) {');
-
-
-
-        // parameters.fileWriter.writeLine(4, 'Object.keys(input).forEach(key => this[key] = input[key]);');
 
         classDeclaration.getOwnProperties().forEach((property) => {
             if (property.optional && (property instanceof Field && property.getDefaultValue())) {
@@ -340,82 +253,13 @@ class TypescriptVisitor {
             } else {
                 parameters.fileWriter.writeLine(3, `this.${property.name} = input.${property.name};` );
             }
-
-
-            // parameters.fileWriter.writeIndented(2, `this.${property.name} = ${property.name};` );
-            // let writeParameters = Object.assign(parameters, {write: true});
-            // property.accept(this, writeParameters);
-            // parameters.fileWriter.write(';');
         });
-
-
-
-
-        // parameters.fileWriter.writeLine(3, '}');
-
-
-
-
-
-
-        // const classHasOwnProperties = classDeclaration.getOwnProperties().length > 0;
-
-        // if (classDeclaration.getSuperType()) {
-        //     parameters.properties[classDeclaration.getSuperType()].forEach((property, idx, array) => {
-        //         let writeParameters = Object.assign({write: true}, parameters);
-        //         property.accept(this, writeParameters);
-        //         if (classHasOwnProperties) {
-        //             parameters.fileWriter.write(', ');
-        //         } else if (idx !== array.length - 1) {
-        //             parameters.fileWriter.write(', ');
-        //         }
-        //     });
-        // }
-
-
-        // classDeclaration.getOwnProperties().forEach((property, idx, array) => {
-        // allClassProperties.forEach((property, idx, array) => {
-        //     let writeParameters = Object.assign({write: true}, parameters);
-        //     property.accept(this, writeParameters);
-        //     if (idx !== array.length - 1){
-        //         parameters.fileWriter.write(', ');
-        //     }
-        // });
-
-        // parameters.fileWriter.writeLine(0,') {');
-
-        // Only call super for derived classes
-        // if (classDeclaration.getSuperType()) {
-        //     parameters.fileWriter.writeIndented(3, 'super(');
-
-        //     // parameters.properties[classDeclaration.getSuperType()].forEach((property, idx, array) => {
-        //     classDeclaration.getSuperTypeDeclaration().getProperties().forEach((property, idx, array) => {
-        //         let writeNameParameters = Object.assign({writeName: true}, parameters);
-        //         property.accept(this, writeNameParameters);
-        //         if (idx !== array.length - 1) {
-        //             parameters.fileWriter.write(', ');
-        //         }
-        //     });
-
-        //     parameters.fileWriter.writeLine(0, ');');
-        // }
-
-        // classDeclaration.getOwnProperties().forEach((property) => {
-        //     parameters.fileWriter.writeLine(3, `this.${property.name} = ${property.name};` );
-
-        //     // parameters.fileWriter.writeIndented(2, `this.${property.name} = ${property.name};` );
-        //     // let writeParameters = Object.assign(parameters, {write: true});
-        //     // property.accept(this, writeParameters);
-        //     // parameters.fileWriter.write(';');
-        // });
-
 
         parameters.fileWriter.writeLine(2, '}' );
 
+
         const hasVersion = allClassProperties.find((property) => property.name === 'version') !== undefined;
         const hasId = allClassProperties.find((property) => property.name === 'id') !== undefined;
-
-
 
         parameters.fileWriter.writeLine(2, 'getResourceType() : string {');
         parameters.fileWriter.writeLine(3, `return '${classDeclaration.getFullyQualifiedName()}';`);
@@ -456,13 +300,9 @@ class TypescriptVisitor {
         if (field.optional || (field.getDefaultValue() && parameters.isInterface)) {
             operator = '?';
         }
-        // else if (field.getDefaultValue() === undefined && !parameters.isInterface) {
-        //     operator = '!';
-        // }
 
         const type = this.toTsType(field.getType());
 
-        // const defaultValue = field.getDefaultValue() && !parameters.isInterface ? ` = ${field.getDefaultValue()}` : '';
         let defaultValue = '';
         if (field.getDefaultValue() && !parameters.isInterface) {
             if (type === 'number' || type === 'boolean' || type === 'Date') {
@@ -508,8 +348,6 @@ class TypescriptVisitor {
         let array = relationship.isArray() ? '[]' : '';
         const name = relationship.getName();
         const optional = relationship.optional ? '?' : '';
-        // const optional = relationship.optional ? '?' : parameters.isInterface ? '' : '!';
-        // const orUndefined = relationship.optional ? ' | undefined' : '';
         const orUndefined = '';
 
         // we export all relationships by capitalizing them
