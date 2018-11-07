@@ -274,11 +274,26 @@ class TypescriptVisitor {
             if (hasId) {
                 parameters.fileWriter.writeLine(3, 'delete json.id;');
             }
-            parameters.fileWriter.writeLine(3, 'Object.keys(json).forEach((key) => { if (json[key] === undefined) delete json[key]; });' );
+
+            parameters.fileWriter.writeLine(3, 'Object.keys(json).forEach((key) => {');
+            parameters.fileWriter.writeLine(4, 'if (json[key] === undefined) {');
+            parameters.fileWriter.writeLine(5, 'delete json[key];');
+            parameters.fileWriter.writeLine(4, '} else if (json[key] instanceof Array) {');
+            parameters.fileWriter.writeLine(5, 'json[key] = json[key].map((el : any) => {');
+            parameters.fileWriter.writeLine(6, 'if (typeof el === \'object\' && !(el instanceof Date)) {');
+            parameters.fileWriter.writeLine(7, 'return el.serializeToJson();');
+            parameters.fileWriter.writeLine(6, '} else {');
+            parameters.fileWriter.writeLine(7, 'return el;');
+            parameters.fileWriter.writeLine(6, '}');
+            parameters.fileWriter.writeLine(5, '});');
+            parameters.fileWriter.writeLine(4, '} else if (typeof json[key] === \'object\' && !(json[key] instanceof Date)) {');
+            parameters.fileWriter.writeLine(5, 'json[key] = json[key].serializeToJson();');
+            parameters.fileWriter.writeLine(4, '}');
+            parameters.fileWriter.writeLine(3, '});');
+
             parameters.fileWriter.writeLine(3, 'return json;' );
             parameters.fileWriter.writeLine(2, '}');
         }
-
 
         parameters.fileWriter.writeLine(1, '}' );
 
