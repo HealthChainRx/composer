@@ -1,6 +1,6 @@
 {
   "name": "composer-connector-server",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "description": "The remote connector server for Hyperledger Composer",
   "engines": {
     "node": ">=8",

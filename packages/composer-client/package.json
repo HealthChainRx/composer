@@ -1,6 +1,6 @@
 {
   "name": "composer-client",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "description": "The node.js client library for Hyperledger Composer, a development framework for Hyperledger Fabric",
   "engines": {
     "node": ">=8",

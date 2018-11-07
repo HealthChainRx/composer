@@ -1115,7 +1115,8 @@ class HLFConnection extends Connection {
                 LOG.debug(method, 'Adding attribute to request', attribute);
                 registerRequest.attrs.push({
                     name: attribute,
-                    value: idAttributes[attribute]
+                    value: idAttributes[attribute],
+                    ECert: true
                 });
             }
 

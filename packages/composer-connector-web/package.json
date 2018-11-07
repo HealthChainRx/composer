@@ -1,6 +1,6 @@
 {
   "name": "composer-connector-web",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "description": "The web client connector for Hyperledger Composer",
   "engines": {
     "node": ">=8",

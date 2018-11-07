@@ -1,6 +1,6 @@
 {
   "name": "composer-tests-functional",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "private": true,
   "description": "Functional verification tests for Hyperledger Composer",
   "engines": {

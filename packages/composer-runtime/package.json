@@ -1,6 +1,6 @@
 {
   "name": "composer-runtime",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "description": "The runtime execution environment for Hyperledger Composer",
   "engines": {
     "node": ">=8",

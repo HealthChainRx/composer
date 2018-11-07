@@ -1,6 +1,6 @@
 {
   "name": "loopback-connector-composer",
-  "version": "0.19.18",
+  "version": "0.19.18-hc",
   "description": "A Loopback connector for Hyperledger Composer",
   "engines": {
     "node": ">=8",
